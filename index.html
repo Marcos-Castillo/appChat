@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Chat App</title>
+</head>
+<style>
+    .chats {
+        display: block;
+        min-width: 30vw;
+        width:fit-content;
+        height: 80vh;
+        border: 2px solid gray;
+    }
+    .hora{
+        font-size: .6em;
+        color: grey;
+    }
+    li{
+        list-style: none;
+    }
+    .inputs{
+        display: flex;
+        flex-direction: column;
+    }
+</style>
+<body>
+  <div class="inputs">
+    <input type="text" id="userInput" placeholder="Escribe un usuario..." />
+    <textarea name="" id="messageInput" cols="30" rows="10" placeholder="Escribe un mensaje..."></textarea>
+    <!-- <input type="text" id="messageInput" placeholder="Escribe un mensaje..." /> -->
+    <button onclick="sendMessage()">Enviar</button>
+    <ul id="chat" class="chat"></ul>
+  </div>
+
+  <script>
+    const socket = new WebSocket('ws://localhost:3000');
+    var clientId = generateClientId();
+
+    socket.addEventListener('open', (event) => {
+      console.log('Conectado al servidor WebSocket');
+    });
+
+    socket.addEventListener('message', (event) => {
+        if (typeof event.data === 'string') {
+                    messageElement.textContent = event.data;
+                } else if (event.data instanceof Blob) {
+             event.data.text().then((text) => {
+                showMessage(text);
+            }).catch((error) => {
+            console.error('Error al convertir Blob en texto:', error);
+            });
+        }
+   
+    });
+
+    function sendMessage() {
+        generateClientIdRename()
+      const messageInput = document.getElementById('messageInput');
+      const messageContent = messageInput.value.trim();
+      if (messageContent) {
+        const now = new Date();
+        const formattedDateTime = `${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
+        const messageData = {
+          sender: clientId,
+          message: messageContent,
+          dateTime: formattedDateTime 
+        };
+        socket.send(JSON.stringify(messageData));
+        messageInput.value = '';
+        
+    
+        showMessage(JSON.stringify({
+          sender: clientId,
+          message: messageContent,
+          dateTime: formattedDateTime
+        }));
+      }
+    }
+
+    function showMessage(message) {
+      const chat = document.getElementById('chat');
+      const messageElement = document.createElement('li');
+      const messageData = JSON.parse(message);
+      
+      const formattedMessage = `<b>${messageData.sender}</b>: ${messageData.message} <span class="hora"> ${messageData.dateTime} </span>`;
+      messageElement.innerHTML = formattedMessage;
+      chat.appendChild(messageElement);
+    }
+
+    function generateClientId() {
+        
+      return 'Usuario ' + Math.floor(Math.random() * 100);
+    }
+    function generateClientIdRename(){
+        var usuario =document.getElementById('userInput')
+        if(usuario.value!='') clientId =usuario.value;
+        usuario.disabled = true;
+    }
+  </script>
+  <small></small>
+</body>
+</html>
