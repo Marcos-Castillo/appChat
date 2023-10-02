@@ -42,7 +42,7 @@
 
     socket.addEventListener('message', (event) => {
         if (typeof event.data === 'string') {
-                    messageElement.textContent = event.data;
+          showMessage(event.data);
                 } else if (event.data instanceof Blob) {
              event.data.text().then((text) => {
                 showMessage(text);
