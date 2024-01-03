@@ -5,9 +5,13 @@
 </head>
 <style>
     .chats {
-        display: block;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .chat-window {
         min-width: 30vw;
-        width:fit-content;
+        width: fit-content;
         height: 80vh;
         border: 2px solid gray;
     }
@@ -25,36 +29,38 @@
 </style>
 <body>
   <div class="inputs">
+    <label for="userInput">Escriba su nombre de usuario y presione enter para comenzar</label>
     <input type="text" id="userInput" placeholder="Escribe un usuario..." />
-    <textarea name="" id="messageInput" cols="30" rows="10" placeholder="Escribe un mensaje..."></textarea>
-    <!-- <input type="text" id="messageInput" placeholder="Escribe un mensaje..." /> -->
-    <button onclick="sendMessage()">Enviar</button>
-    <ul id="chat" class="chat"></ul>
+    
   </div>
+
+  <div class="chats" id="chatsContainer"></div>
 
   <script>
     const socket = new WebSocket('ws://localhost:3000');
-    var clientId = generateClientId();
+    var clientId = null;
+    const chatsContainer = document.getElementById('chatsContainer');
+    const userChats = {};
+    var playing = false;
 
     socket.addEventListener('open', (event) => {
       console.log('Conectado al servidor WebSocket');
     });
 
     socket.addEventListener('message', (event) => {
-        if (typeof event.data === 'string') {
-          showMessage(event.data);
-                } else if (event.data instanceof Blob) {
-             event.data.text().then((text) => {
-                showMessage(text);
-            }).catch((error) => {
-            console.error('Error al convertir Blob en texto:', error);
-            });
-        }
-   
+      if (typeof event.data === 'string') {
+        showMessage(event.data);
+      } else if (event.data instanceof Blob) {
+        event.data.text().then((text) => {
+          showMessage(text);
+        }).catch((error) => {
+          console.error('Error al convertir Blob en texto:', error);
+        });
+      }
     });
 
     function sendMessage() {
-        generateClientIdRename()
+      generateClientIdRename();
       const messageInput = document.getElementById('messageInput');
       const messageContent = messageInput.value.trim();
       if (messageContent) {
@@ -67,8 +73,7 @@
         };
         socket.send(JSON.stringify(messageData));
         messageInput.value = '';
-        
-    
+
         showMessage(JSON.stringify({
           sender: clientId,
           message: messageContent,
@@ -78,23 +83,95 @@
     }
 
     function showMessage(message) {
-      const chat = document.getElementById('chat');
-      const messageElement = document.createElement('li');
       const messageData = JSON.parse(message);
-      
+      const userName = messageData.sender;
+
+      // Verificar si ya existe una ventana de chat para el usuario
+      let chatWindow = userChats[userName];
+
+      if (!chatWindow) {
+        // Si no existe, crear una nueva ventana de chat
+        chatWindow = createChatWindow(userName);
+        userChats[userName] = chatWindow;
+      }
+
+      const chat = chatWindow.querySelector('.chat');
+      const messageElement = document.createElement('li');
+
       const formattedMessage = `<b>${messageData.sender}</b>: ${messageData.message} <span class="hora"> ${messageData.dateTime} </span>`;
       messageElement.innerHTML = formattedMessage;
       chat.appendChild(messageElement);
     }
 
+    function createChatWindow(userName) {
+      const chatWindow = document.createElement('div');
+      chatWindow.className = 'chat-window';
+      chatWindow.innerHTML = `<h2>${userName}</h2><ul class="chat" id="${userName}"></ul>`;
+      chatsContainer.appendChild(chatWindow);
+      return chatWindow;
+    }
+
     function generateClientId() {
-        
+      var usuario = document.getElementById('userInput');
+      usuario.disabled = true;
+       const userName=usuario.value.trim();
+      if (userName) {
+        // Verificar si ya existe una ventana de chat para el usuario
+        if (!userChats[userName]) {
+          // Si no existe, crear una nueva ventana de chat
+          return userName
+        }
+      }
       return 'Usuario ' + Math.floor(Math.random() * 100);
     }
+
     function generateClientIdRename(){
-        var usuario =document.getElementById('userInput')
-        if(usuario.value!='') clientId =usuario.value;
-        usuario.disabled = true;
+      var usuario = document.getElementById('userInput');
+      if(usuario.value != '') clientId = usuario.value;
+      usuario.disabled = true;
+    }
+
+    function createChat() {
+      generateClientIdRename();
+      const userName = document.getElementById('userInput').value.trim();
+      if (userName) {
+        // Verificar si ya existe una ventana de chat para el usuario
+        if (!userChats[userName]) {
+          // Si no existe, crear una nueva ventana de chat
+          const chatWindow = createChatWindow(userName);
+          userChats[userName] = chatWindow;
+        }
+      }
+    }
+  </script>
+  <script>//envío de teclas al servidor
+    document.body.addEventListener('keydown', handleKeyDown);
+    
+    
+    function handleKeyDown(event) {
+      const key = event.key;
+
+      // Puedes personalizar este bloque según tus necesidades
+      if(key=='Enter' || playing)
+      {
+        if(clientId==null){
+          clientId = generateClientId();
+        }
+      playing= true;
+      const messageContent = `Tecla presionada: ${key}`;
+      const now = new Date();
+      const formattedDateTime = `${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
+      const messageData = {
+        sender: clientId,
+        message: messageContent,
+        dateTime: formattedDateTime
+      };
+
+      // Enviar el mensaje al servidor WebSocket
+      socket.send(JSON.stringify(messageData));
+
+      // Mostrar el mensaje en el chat localmente
+      showMessage(JSON.stringify(messageData));}
     }
   </script>
   <small></small>
