@@ -26,6 +26,9 @@
         display: flex;
         flex-direction: column;
     }
+    canvas {
+            border: 1px solid #000;
+        }
 </style>
 <body>
   <div class="inputs">
@@ -33,7 +36,7 @@
     <input type="text" id="userInput" placeholder="Escribe un usuario..." />
     
   </div>
-
+  <canvas id="snakeCanvas" width="400" height="400"></canvas>
   <div class="chats" id="chatsContainer"></div>
 
   <script>
@@ -99,14 +102,18 @@
       const messageElement = document.createElement('li');
 
       const formattedMessage = `<b>${messageData.sender}</b>: ${messageData.message} <span class="hora"> ${messageData.dateTime} </span>`;
+      dibujar(messageData.sender,messageData.message)
       messageElement.innerHTML = formattedMessage;
       chat.appendChild(messageElement);
     }
 
+
+
     function createChatWindow(userName) {
       const chatWindow = document.createElement('div');
       chatWindow.className = 'chat-window';
-      chatWindow.innerHTML = `<h2>${userName}</h2><ul class="chat" id="${userName}"></ul>`;
+      chatWindow.innerHTML = `<h2>${userName}</h2><ul class="chat" id="${userName}"></ul> `;
+
       chatsContainer.appendChild(chatWindow);
       return chatWindow;
     }
@@ -158,7 +165,7 @@
           clientId = generateClientId();
         }
       playing= true;
-      const messageContent = `Tecla presionada: ${key}`;
+      const messageContent = `${key}`;
       const now = new Date();
       const formattedDateTime = `${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
       const messageData = {
@@ -174,6 +181,104 @@
       showMessage(JSON.stringify(messageData));}
     }
   </script>
+
+<script>
+function dibujar(user, comando) {
+  console.log(user + '+' + comando);
+  direction=comando;
+}
+
+ 
+</script>
+
+
+
+<script>
+    const canvas = document.getElementById('snakeCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const boxSize = 20;
+    let snake = [{ x: 10, y: 10 }];
+    let food = { x: 15, y: 15 };
+    let direction = 'right';
+
+    function draw() {
+        // Dibujar el fondo
+        ctx.fillStyle = '#eee';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Dibujar la serpiente
+        ctx.fillStyle = '#00f';
+        snake.forEach(segment => {
+            ctx.fillRect(segment.x * boxSize, segment.y * boxSize, boxSize, boxSize);
+        });
+
+        // Dibujar la comida
+        ctx.fillStyle = '#f00';
+        ctx.fillRect(food.x * boxSize, food.y * boxSize, boxSize, boxSize);
+    }
+
+    function move() {
+    const head = { ...snake[0] };
+
+    // Mover la cabeza según la dirección
+    switch (direction) {
+        case 'ArrowUp':
+            head.y--;
+            break;
+        case 'ArrowDown':
+            head.y++;
+            break;
+        case 'ArrowLeft':
+            head.x--;
+            break;
+        case 'ArrowRight':
+            head.x++;
+            break;
+    }
+
+    // Comprobar si la cabeza sale del canvas por el lado derecho
+    if (head.x >= canvas.width / boxSize) {
+        head.x = 0; // Aparece en el lado izquierdo
+    }
+
+    // Comprobar si la cabeza sale del canvas por el lado izquierdo
+    if (head.x < 0) {
+        head.x = canvas.width / boxSize - 1; // Aparece en el lado derecho
+    }
+
+    // Comprobar si la cabeza sale del canvas por la parte superior
+    if (head.y < 0) {
+        head.y = canvas.height / boxSize - 1; // Aparece en la parte inferior
+    }
+
+    // Comprobar si la cabeza sale del canvas por la parte inferior
+    if (head.y >= canvas.height / boxSize) {
+        head.y = 0; // Aparece en la parte superior
+    }
+
+    snake.unshift(head);
+
+    // Comprobar si la serpiente alcanzó la comida
+    if (head.x === food.x && head.y === food.y) {
+        // Generar nueva comida en una posición aleatoria
+        food = {
+            x: Math.floor(Math.random() * (canvas.width / boxSize)),
+            y: Math.floor(Math.random() * (canvas.height / boxSize))
+        };
+    } else {
+        // Si no alcanzó la comida, quitar la cola de la serpiente
+        snake.pop();
+    }
+}
+
+
+    function gameLoop() {
+        move();
+        draw();
+    }
+    setInterval(gameLoop, 100);
+</script>
   <small></small>
 </body>
 </html>
