@@ -1,284 +1,246 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Chat App</title>
-</head>
-<style>
-    .chats {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-    }
-    .chat-window {
-        min-width: 30vw;
-        width: fit-content;
-        height: 80vh;
-        border: 2px solid gray;
-    }
-    .hora{
-        font-size: .6em;
-        color: grey;
-    }
-    li{
-        list-style: none;
-    }
-    .inputs{
-        display: flex;
-        flex-direction: column;
-    }
-    canvas {
+    <title>Chat App</title>
+    <style>
+        .chats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .chat-window {
+            min-width: 30vw;
+            width: fit-content;
+            height: 80vh;
+            border: 2px solid gray;
+        }
+
+        .hora {
+            font-size: .6em;
+            color: grey;
+        }
+
+        li {
+            list-style: none;
+        }
+
+        .inputs {
+            display: flex;
+            flex-direction: column;
+        }
+
+        canvas {
             border: 1px solid #000;
         }
-</style>
+    </style>
+</head>
 <body>
-  <div class="inputs">
-    <label for="userInput">Escriba su nombre de usuario y presione enter para comenzar</label>
-    <input type="text" id="userInput" placeholder="Escribe un usuario..." />
-    
-  </div>
-  <canvas id="snakeCanvas" width="400" height="400"></canvas>
-  <div class="chats" id="chatsContainer"></div>
+    <div class="inputs">
+        <label for="userInput">Escriba su nombre de usuario y presione enter para comenzar</label>
+        <input type="text" id="userInput" placeholder="Escribe un usuario..." />
+    </div>
+    <canvas id="snakeCanvas" width="400" height="400"></canvas>
+    <div class="chats" id="chatsContainer"></div>
 
-  <script>
-    const socket = new WebSocket('ws://localhost:3000');
-    var clientId = null;
-    const chatsContainer = document.getElementById('chatsContainer');
-    const userChats = {};
-    var playing = false;
+    <script>
+        const socket = new WebSocket('ws://localhost:3000');
+        var clientId = null;
+        const chatsContainer = document.getElementById('chatsContainer');
+        const userChats = {};
+        var playing = false;
 
-    socket.addEventListener('open', (event) => {
-      console.log('Conectado al servidor WebSocket');
-    });
-
-    socket.addEventListener('message', (event) => {
-      if (typeof event.data === 'string') {
-        showMessage(event.data);
-      } else if (event.data instanceof Blob) {
-        event.data.text().then((text) => {
-          showMessage(text);
-        }).catch((error) => {
-          console.error('Error al convertir Blob en texto:', error);
-        });
-      }
-    });
-
-    function sendMessage() {
-      generateClientIdRename();
-      const messageInput = document.getElementById('messageInput');
-      const messageContent = messageInput.value.trim();
-      if (messageContent) {
-        const now = new Date();
-        const formattedDateTime = `${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
-        const messageData = {
-          sender: clientId,
-          message: messageContent,
-          dateTime: formattedDateTime 
-        };
-        socket.send(JSON.stringify(messageData));
-        messageInput.value = '';
-
-        showMessage(JSON.stringify({
-          sender: clientId,
-          message: messageContent,
-          dateTime: formattedDateTime
-        }));
-      }
-    }
-
-    function showMessage(message) {
-      const messageData = JSON.parse(message);
-      const userName = messageData.sender;
-
-      // Verificar si ya existe una ventana de chat para el usuario
-      let chatWindow = userChats[userName];
-
-      if (!chatWindow) {
-        // Si no existe, crear una nueva ventana de chat
-        chatWindow = createChatWindow(userName);
-        userChats[userName] = chatWindow;
-      }
-
-      const chat = chatWindow.querySelector('.chat');
-      const messageElement = document.createElement('li');
-
-      const formattedMessage = `<b>${messageData.sender}</b>: ${messageData.message} <span class="hora"> ${messageData.dateTime} </span>`;
-      dibujar(messageData.sender,messageData.message)
-      messageElement.innerHTML = formattedMessage;
-      chat.appendChild(messageElement);
-    }
-
-
-
-    function createChatWindow(userName) {
-      const chatWindow = document.createElement('div');
-      chatWindow.className = 'chat-window';
-      chatWindow.innerHTML = `<h2>${userName}</h2><ul class="chat" id="${userName}"></ul> `;
-
-      chatsContainer.appendChild(chatWindow);
-      return chatWindow;
-    }
-
-    function generateClientId() {
-      var usuario = document.getElementById('userInput');
-      usuario.disabled = true;
-       const userName=usuario.value.trim();
-      if (userName) {
-        // Verificar si ya existe una ventana de chat para el usuario
-        if (!userChats[userName]) {
-          // Si no existe, crear una nueva ventana de chat
-          return userName
-        }
-      }
-      return 'Usuario ' + Math.floor(Math.random() * 100);
-    }
-
-    function generateClientIdRename(){
-      var usuario = document.getElementById('userInput');
-      if(usuario.value != '') clientId = usuario.value;
-      usuario.disabled = true;
-    }
-
-    function createChat() {
-      generateClientIdRename();
-      const userName = document.getElementById('userInput').value.trim();
-      if (userName) {
-        // Verificar si ya existe una ventana de chat para el usuario
-        if (!userChats[userName]) {
-          // Si no existe, crear una nueva ventana de chat
-          const chatWindow = createChatWindow(userName);
-          userChats[userName] = chatWindow;
-        }
-      }
-    }
-  </script>
-  <script>//envío de teclas al servidor
-    document.body.addEventListener('keydown', handleKeyDown);
-    
-    
-    function handleKeyDown(event) {
-      const key = event.key;
-
-      // Puedes personalizar este bloque según tus necesidades
-      if(key=='Enter' || playing)
-      {
-        if(clientId==null){
-          clientId = generateClientId();
-        }
-      playing= true;
-      const messageContent = `${key}`;
-      const now = new Date();
-      const formattedDateTime = `${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
-      const messageData = {
-        sender: clientId,
-        message: messageContent,
-        dateTime: formattedDateTime
-      };
-
-      // Enviar el mensaje al servidor WebSocket
-      socket.send(JSON.stringify(messageData));
-
-      // Mostrar el mensaje en el chat localmente
-      showMessage(JSON.stringify(messageData));}
-    }
-  </script>
-
-<script>
-function dibujar(user, comando) {
-  console.log(user + '+' + comando);
-  direction=comando;
-}
-
- 
-</script>
-
-
-
-<script>
-    const canvas = document.getElementById('snakeCanvas');
-    const ctx = canvas.getContext('2d');
-
-    const boxSize = 20;
-    let snake = [{ x: 10, y: 10 }];
-    let food = { x: 15, y: 15 };
-    let direction = 'right';
-
-    function draw() {
-        // Dibujar el fondo
-        ctx.fillStyle = '#eee';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // Dibujar la serpiente
-        ctx.fillStyle = '#00f';
-        snake.forEach(segment => {
-            ctx.fillRect(segment.x * boxSize, segment.y * boxSize, boxSize, boxSize);
+        socket.addEventListener('open', (event) => {
+            console.log('Conectado al servidor WebSocket');
         });
 
-        // Dibujar la comida
-        ctx.fillStyle = '#f00';
-        ctx.fillRect(food.x * boxSize, food.y * boxSize, boxSize, boxSize);
-    }
+        socket.addEventListener('message', (event) => {
+            if (typeof event.data === 'string') {
+                showMessage(event.data);
+            } else if (event.data instanceof Blob) {
+                event.data.text().then((text) => {
+                    showMessage(text);
+                }).catch((error) => {
+                    console.error('Error al convertir Blob en texto:', error);
+                });
+            }
+        });
 
-    function move() {
-    const head = { ...snake[0] };
+        function sendMessage(message) {
+            socket.send(JSON.stringify(message));
+        }
 
-    // Mover la cabeza según la dirección
-    switch (direction) {
-        case 'ArrowUp':
-            head.y--;
-            break;
-        case 'ArrowDown':
-            head.y++;
-            break;
-        case 'ArrowLeft':
-            head.x--;
-            break;
-        case 'ArrowRight':
-            head.x++;
-            break;
-    }
+        function showMessage(message) {
+            const messageData = JSON.parse(message);
+            const userName = messageData.sender;
 
-    // Comprobar si la cabeza sale del canvas por el lado derecho
-    if (head.x >= canvas.width / boxSize) {
-        head.x = 0; // Aparece en el lado izquierdo
-    }
+            // Verificar si ya existe una ventana de chat para el usuario
+            let chatWindow = userChats[userName];
 
-    // Comprobar si la cabeza sale del canvas por el lado izquierdo
-    if (head.x < 0) {
-        head.x = canvas.width / boxSize - 1; // Aparece en el lado derecho
-    }
+            if (!chatWindow) {
+                // Si no existe, crear una nueva ventana de chat
+                chatWindow = createChatWindow(userName);
+                userChats[userName] = chatWindow;
+            }
 
-    // Comprobar si la cabeza sale del canvas por la parte superior
-    if (head.y < 0) {
-        head.y = canvas.height / boxSize - 1; // Aparece en la parte inferior
-    }
+            const chat = chatWindow.querySelector('.chat');
+            const messageElement = document.createElement('li');
 
-    // Comprobar si la cabeza sale del canvas por la parte inferior
-    if (head.y >= canvas.height / boxSize) {
-        head.y = 0; // Aparece en la parte superior
-    }
+            const formattedMessage = `<b>${messageData.sender}</b>: ${messageData.message} <span class="hora"> ${messageData.dateTime} </span>`;
+            messageElement.innerHTML = formattedMessage;
+            chat.appendChild(messageElement);
+        }
 
-    snake.unshift(head);
+        function createChatWindow(userName) {
+            const chatWindow = document.createElement('div');
+            chatWindow.className = 'chat-window';
+            chatWindow.innerHTML = `<h2>${userName}</h2><ul class="chat" id="${userName}"></ul> `;
 
-    // Comprobar si la serpiente alcanzó la comida
-    if (head.x === food.x && head.y === food.y) {
-        // Generar nueva comida en una posición aleatoria
-        food = {
-            x: Math.floor(Math.random() * (canvas.width / boxSize)),
-            y: Math.floor(Math.random() * (canvas.height / boxSize))
-        };
-    } else {
-        // Si no alcanzó la comida, quitar la cola de la serpiente
-        snake.pop();
-    }
-}
+            chatsContainer.appendChild(chatWindow);
+            return chatWindow;
+        }
 
+        function generateClientIdRename() {
+            var usuario = document.getElementById('userInput');
+            if (usuario.value != '') clientId = usuario.value;
+            usuario.disabled = true;
+        }
 
-    function gameLoop() {
-        move();
-        draw();
-    }
-    setInterval(gameLoop, 100);
-</script>
-  <small></small>
+        function generateClientId() {
+            var usuario = document.getElementById('userInput');
+            usuario.disabled = true;
+            const userName = usuario.value.trim();
+            if (userName) {
+                // Verificar si ya existe una ventana de chat para el usuario
+                if (!userChats[userName]) {
+                    // Si no existe, crear una nueva ventana de chat
+                    return userName;
+                }
+            }
+            return 'Usuario ' + Math.floor(Math.random() * 100);
+        }
+
+        function handleKeyDown(event) {
+            const key = event.key;
+
+            // Puedes personalizar este bloque según tus necesidades
+            if (key == 'Enter' || playing) {
+                if (clientId == null) {
+                    clientId = generateClientId();
+                }
+                playing = true;
+                const messageContent = `${key}`;
+                const now = new Date();
+                const formattedDateTime = `${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
+                const messageData = {
+                    sender: clientId,
+                    message: messageContent,
+                    dateTime: formattedDateTime
+                };
+
+                // Enviar el mensaje al servidor WebSocket
+                socket.send(JSON.stringify(messageData));
+
+                // Mostrar el mensaje en el chat localmente
+                showMessage(JSON.stringify(messageData));
+
+                // Actualizar la dirección para la serpiente
+                dibujar(clientId, messageContent);
+            }
+        }
+
+        document.body.addEventListener('keydown', handleKeyDown);
+
+        function dibujar(user, comando) {
+            console.log(user + '+' + comando);
+            direction = comando;
+        }
+    </script>
+
+    <script>
+        const canvas = document.getElementById('snakeCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const boxSize = 20;
+        let snake = [{ x: 10, y: 10 }];
+        let food = { x: 15, y: 15 };
+        let direction = 'right';
+
+        function draw() {
+            // Dibujar el fondo
+            ctx.fillStyle = '#eee';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Dibujar la serpiente
+            ctx.fillStyle = '#00f';
+            snake.forEach(segment => {
+                ctx.fillRect(segment.x * boxSize, segment.y * boxSize, boxSize, boxSize);
+            });
+
+            // Dibujar la comida
+            ctx.fillStyle = '#f00';
+            ctx.fillRect(food.x * boxSize, food.y * boxSize, boxSize, boxSize);
+        }
+
+        function move() {
+            const head = { ...snake[0] };
+
+            // Mover la cabeza según la dirección
+            switch (direction) {
+                case 'ArrowUp':
+                    head.y--;
+                    break;
+                case 'ArrowDown':
+                    head.y++;
+                    break;
+                case 'ArrowLeft':
+                    head.x--;
+                    break;
+                case 'ArrowRight':
+                    head.x++;
+                    break;
+            }
+
+            // Comprobar si la cabeza sale del canvas por el lado derecho
+            if (head.x >= canvas.width / boxSize) {
+                head.x = 0; // Aparece en el lado izquierdo
+            }
+
+            // Comprobar si la cabeza sale del canvas por el lado izquierdo
+            if (head.x < 0) {
+                head.x = canvas.width / boxSize - 1; // Aparece en el lado derecho
+            }
+
+            // Comprobar si la cabeza sale del canvas por la parte superior
+            if (head.y < 0) {
+                head.y = canvas.height / boxSize - 1; // Aparece en la parte inferior
+            }
+
+            // Comprobar si la cabeza sale del canvas por la parte inferior
+            if (head.y >= canvas.height / boxSize) {
+                head.y = 0; // Aparece en la parte superior
+            }
+
+            snake.unshift(head);
+
+            // Comprobar si la serpiente alcanzó la comida
+            if (head.x === food.x && head.y === food.y) {
+                // Generar nueva comida en una posición aleatoria
+                food = {
+                    x: Math.floor(Math.random() * (canvas.width / boxSize)),
+                    y: Math.floor(Math.random() * (canvas.height / boxSize))
+                };
+            } else {
+                // Si no alcanzó la comida, quitar la cola de la serpiente
+                snake.pop();
+            }
+        }
+
+        function gameLoop() {
+            move();
+            draw();
+        }
+        setInterval(gameLoop, 100);
+    </script>
 </body>
 </html>
